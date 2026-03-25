@@ -1,6 +1,5 @@
 """Extended database operations for conversations."""
 
-from motor.motor_asyncio import AsyncDatabase
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from loguru import logger

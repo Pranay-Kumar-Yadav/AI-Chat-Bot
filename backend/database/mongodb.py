@@ -1,6 +1,6 @@
-"""MongoDB database operations with async support using Motor."""
+"""MongoDB database operations with async support using motor."""
 
-from motor.motor_asyncio import AsyncClient, AsyncDatabase, AsyncCollection
+import motor.motor_asyncio
 from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 from typing import Optional, List, Dict, Any
 from datetime import datetime
@@ -24,8 +24,8 @@ class Database:
         """
         self.mongo_uri = mongo_uri
         self.db_name = db_name
-        self.client: Optional[AsyncClient] = None
-        self.db: Optional[AsyncDatabase] = None
+        self.client: Optional[object] = None
+        self.db: Optional[object] = None
         logger.info(f"Database initialized with URI: {mongo_uri}")
 
     async def connect(self):
@@ -36,7 +36,7 @@ class Database:
             ConnectionFailure: If unable to connect to MongoDB
         """
         try:
-            self.client = AsyncClient(self.mongo_uri)
+            self.client = motor.motor_asyncio.AsyncIOMotorClient(self.mongo_uri)
             self.db = self.client[self.db_name]
             
             # Test connection

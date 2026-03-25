@@ -4,12 +4,15 @@ Uses environment variables for configuration.
 """
 
 from pydantic_settings import BaseSettings
+from pydantic import ConfigDict
 from typing import List
 import os
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
+
+    model_config = ConfigDict(env_file=".env", case_sensitive=False, protected_namespaces=())
 
     # API Configuration
     api_host: str = "0.0.0.0"
@@ -40,12 +43,8 @@ class Settings(BaseSettings):
 
     # RAG Configuration
     pdf_upload_dir: str = "./uploads"
-    chunk_size: int = 1024
-    chunk_overlap: int = 128
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = False
+    rag_chunk_size: int = 1024
+    rag_chunk_overlap: int = 128
 
     @property
     def cors_origins_list(self) -> List[str]:
