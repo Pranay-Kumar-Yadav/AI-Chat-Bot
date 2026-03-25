@@ -3,15 +3,58 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from contextlib import asynccontextmanager
+from loguru import logger
 
 from backend.config import settings
 from backend.routes import chat_router, health_router
+from backend.database import init_database, close_database
+
+
+# Configure logging
+logger.add(
+    "logs/app.log",
+    rotation="500 MB",
+    retention="10 days",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for app startup and shutdown.
+    
+    Handles:
+    - Database connection initialization
+    - Database connection cleanup
+    """
+    # Startup
+    logger.info("Starting application...")
+    try:
+        await init_database()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database: {e}")
+        raise
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down application...")
+    try:
+        await close_database()
+        logger.info("Database connection closed")
+    except Exception as e:
+        logger.error(f"Error closing database: {e}")
+
 
 # Create FastAPI app
 app = FastAPI(
     title="AI Chatbot API",
     description="A full-stack AI chatbot application with RAG support",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Add CORS middleware

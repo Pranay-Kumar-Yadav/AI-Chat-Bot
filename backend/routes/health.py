@@ -1,6 +1,8 @@
 """Health check routes."""
 
 from fastapi import APIRouter
+from backend.database import get_database
+from loguru import logger
 
 router = APIRouter()
 
@@ -28,7 +30,26 @@ async def health_check_db():
     Returns:
         dict: Database status
     """
-    return {
-        "status": "healthy",
-        "database": "MongoDB",
-    }
+    try:
+        db = get_database()
+        is_healthy = await db.health_check()
+        
+        if is_healthy:
+            return {
+                "status": "healthy",
+                "database": "MongoDB",
+                "message": "Database connection is active",
+            }
+        else:
+            return {
+                "status": "unhealthy",
+                "database": "MongoDB",
+                "message": "Database connection failed",
+            }
+    except Exception as e:
+        logger.error(f"Health check error: {e}")
+        return {
+            "status": "unhealthy",
+            "database": "MongoDB",
+            "message": str(e),
+        }

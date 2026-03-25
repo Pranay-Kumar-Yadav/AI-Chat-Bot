@@ -7,6 +7,12 @@ from .schemas import (
     ConversationResponse,
     DocumentUploadResponse,
 )
+from .database_models import (
+    ConversationDB,
+    MessageDB,
+    DocumentDB,
+    DocumentChunkDB,
+)
 
 __all__ = [
     "ChatMessage",
@@ -14,4 +20,8 @@ __all__ = [
     "ChatResponse",
     "ConversationResponse",
     "DocumentUploadResponse",
+    "ConversationDB",
+    "MessageDB",
+    "DocumentDB",
+    "DocumentChunkDB",
 ]
