@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from loguru import logger
 
 from backend.config import settings
-from backend.routes import chat_router, health_router
+from backend.routes import chat_router, health_router, documents_router, messages_router
 from backend.database import init_database, close_database
 
 
@@ -75,6 +75,8 @@ app.add_middleware(
 # Include routers
 app.include_router(health_router, prefix="/api", tags=["health"])
 app.include_router(chat_router, prefix="/api", tags=["chat"])
+app.include_router(documents_router, prefix="/api", tags=["documents"])
+app.include_router(messages_router, prefix="/api", tags=["messages"])
 
 
 @app.get("/")
