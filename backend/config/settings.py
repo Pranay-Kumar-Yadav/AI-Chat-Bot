@@ -1,0 +1,57 @@
+"""
+Application settings and configuration management.
+Uses environment variables for configuration.
+"""
+
+from pydantic_settings import BaseSettings
+from typing import List
+import os
+
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
+
+    # API Configuration
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+    api_debug: bool = False
+
+    # OpenAI Configuration
+    openai_api_key: str
+    model_name: str = "gpt-3.5-turbo"
+    embedding_model: str = "text-embedding-3-small"
+
+    # MongoDB Configuration
+    mongo_uri: str = "mongodb://localhost:27017/ai_chatbot"
+    mongo_db_name: str = "ai_chatbot"
+
+    # CORS Configuration
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+
+    # LLM Configuration
+    temperature: float = 0.7
+    max_tokens: int = 2048
+    top_p: float = 0.9
+
+    # Vector Database Configuration
+    vector_db_type: str = "chroma"
+    embed_dim: int = 1536
+    chroma_db_path: str = "./data/chroma_db"
+
+    # RAG Configuration
+    pdf_upload_dir: str = "./uploads"
+    chunk_size: int = 1024
+    chunk_overlap: int = 128
+
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Parse CORS origins from comma-separated string."""
+        return [origin.strip() for origin in self.cors_origins.split(",")]
+
+
+# Create global settings instance
+settings = Settings()
