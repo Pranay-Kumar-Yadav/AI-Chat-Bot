@@ -38,14 +38,28 @@ const ConversationList = ({
             {conversations.map((conv) => (
               <div
                 key={conv.conversation_id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                className={`p-3 rounded-lg transition-colors ${
                   currentConversationId === conv.conversation_id
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-700 text-gray-100 hover:bg-gray-600'
                 }`}
-                onClick={() => onSelectConversation(conv.conversation_id)}
               >
-                <div className="truncate font-medium text-sm">{conv.title}</div>
+                <div
+                  className="flex justify-between items-start gap-2 cursor-pointer"
+                  onClick={() => onSelectConversation(conv.conversation_id)}
+                >
+                  <div className="truncate font-medium text-sm">{conv.title}</div>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      onDeleteConversation(conv.conversation_id)
+                    }}
+                    className="text-gray-300 hover:text-red-300"
+                    title="Delete conversation"
+                  >
+                    &times;
+                  </button>
+                </div>
                 <div className="text-xs opacity-70">
                   {conv.message_count || 0} messages
                 </div>

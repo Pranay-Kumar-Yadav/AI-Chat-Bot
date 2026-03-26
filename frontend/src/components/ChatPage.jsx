@@ -3,128 +3,80 @@
  * Main chat interface combining sidebar, messages, input, and file upload
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import Sidebar from './Sidebar';
 import ChatWindow from './ChatWindow';
 import MessageInput from './MessageInput';
 import FileUpload from './FileUpload';
-import APIClient from '../services/api';
+import useChatStore from '../store/chatStore';
 
 const ChatPage = () => {
-  const [currentConversationId, setCurrentConversationId] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [useRAG, setUseRAG] = useState(true);
-  const [conversationStats, setConversationStats] = useState(null);
+  const {
+    currentConversationId,
+    messages,
+    isLoading,
+    useRAG,
+    conversationStats,
+    conversations,
+    lastError,
+    loadConversations,
+    selectConversation,
+    newConversation,
+    clearConversation,
+    sendMessage,
+    deleteConversation,
+    setRAG
+  } = useChatStore();
 
-  // Load messages when conversation changes
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
   useEffect(() => {
     if (currentConversationId) {
-      loadMessages();
-      loadStats();
-    } else {
-      setMessages([]);
-      setConversationStats(null);
+      selectConversation(currentConversationId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentConversationId]);
 
-  const loadMessages = async () => {
-    try {
-      const data = await APIClient.getMessageHistory(currentConversationId);
-      setMessages(data);
-    } catch (error) {
-      console.error('Failed to load messages:', error);
-    }
+  const handleNewConversation = async () => {
+    await newConversation('New Conversation')
   };
 
-  const loadStats = async () => {
-    try {
-      const stats = await APIClient.getConversationStats(currentConversationId);
-      setConversationStats(stats);
-    } catch (error) {
-      console.error('Failed to load conversation stats:', error);
-    }
-  };
-
-  const handleNewConversation = async (conversationId) => {
-    if (conversationId) {
-      setCurrentConversationId(conversationId);
-    }
-  };
-
-  const handleSelectConversation = (conversationId) => {
-    setCurrentConversationId(conversationId);
+  const handleSelectConversation = async (conversationId) => {
+    await selectConversation(conversationId)
   };
 
   const handleSendMessage = async (content) => {
     if (!currentConversationId || !content.trim()) return;
 
-    // Optimistic update - add user message immediately
-    const userMessage = {
-      message_id: `temp-${Date.now()}`,
-      conversation_id: currentConversationId,
-      role: 'user',
-      content: content,
-      timestamp: new Date().toISOString(),
-      tokens_used: 0,
-      model: null
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setIsLoading(true);
-
     try {
-      // Send message to backend
-      const response = await APIClient.sendMessage(currentConversationId, {
-        content: content,
-        use_rag: useRAG
-      });
-
-      // Remove temp message and add real messages
-      setMessages(prev => 
-        prev.filter(m => m.message_id !== userMessage.message_id)
-      );
-
-      // Reload messages to get complete conversation with assistant response
-      await loadMessages();
-      await loadStats();
+      await sendMessage(content)
     } catch (error) {
-      console.error('Failed to send message:', error);
-      // Remove temp message on error
-      setMessages(prev =>
-        prev.filter(m => m.message_id !== userMessage.message_id)
-      );
-      // Show error to user - in production, use a toast notification
-      alert('Failed to send message. Please try again.');
-    } finally {
-      setIsLoading(false);
+      alert('Failed to send message. Please try again.')
     }
   };
 
   const handleClearConversation = async () => {
-    if (!currentConversationId) return;
-    if (!window.confirm('Clear all messages in this conversation?')) return;
+    if (!currentConversationId) return
+    if (!window.confirm('Clear all messages in this conversation?')) return
 
-    try {
-      await APIClient.clearConversation(currentConversationId);
-      setMessages([]);
-      await loadStats();
-    } catch (error) {
-      console.error('Failed to clear conversation:', error);
-    }
+    await clearConversation()
   };
 
   const handleRAGToggle = (newValue) => {
-    setUseRAG(newValue);
+    setRAG(newValue)
   };
 
   return (
     <div className="h-screen flex bg-gray-900">
       {/* Sidebar */}
       <Sidebar
+        conversations={conversations}
         currentConversationId={currentConversationId}
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
+        onDeleteConversation={deleteConversation}
       />
 
       {/* Main Chat Area */}
