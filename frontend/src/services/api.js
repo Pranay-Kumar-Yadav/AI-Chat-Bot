@@ -133,14 +133,14 @@ class APIClient {
 
   async deleteDocument(documentId, conversationId) {
     const params = new URLSearchParams({ conversation_id: conversationId });
-    return this.request(`/documents/${documentId}`, {
+    return this.request(`/documents/${documentId}?${params}`, {
       method: 'DELETE',
     });
   }
 
   async updateDocumentStatus(documentId, status) {
     const params = new URLSearchParams({ status });
-    return this.request(`/documents/${documentId}/status`, {
+    return this.request(`/documents/${documentId}/status?${params}`, {
       method: 'PATCH',
     });
   }
