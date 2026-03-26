@@ -3,15 +3,31 @@
  * Displays list of conversations in sidebar
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 
 const ConversationList = ({ 
   conversations = [], 
   currentConversationId = null,
   onSelectConversation,
   onNewConversation,
-  onDeleteConversation
+  onDeleteConversation,
+  onRenameConversation
 }) => {
+  const [editingId, setEditingId] = useState(null)
+  const [draftTitle, setDraftTitle] = useState('')
+
+  const startEdit = (conv) => {
+    setEditingId(conv.conversation_id)
+    setDraftTitle(conv.title || 'New Conversation')
+  }
+
+  const saveEdit = async () => {
+    if (!editingId || !draftTitle.trim()) return
+    await onRenameConversation(editingId, draftTitle.trim())
+    setEditingId(null)
+    setDraftTitle('')
+  }
+
   return (
     <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
       {/* Header */}
@@ -27,7 +43,6 @@ const ConversationList = ({
         </button>
       </div>
 
-      {/* Conversations List */}
       <div className="flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
           <div className="p-4 text-center text-gray-400">
@@ -35,41 +50,70 @@ const ConversationList = ({
           </div>
         ) : (
           <div className="space-y-2 p-4">
-            {conversations.map((conv) => (
-              <div
-                key={conv.conversation_id}
-                className={`p-3 rounded-lg transition-colors ${
-                  currentConversationId === conv.conversation_id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-100 hover:bg-gray-600'
-                }`}
-              >
+            {conversations.map((conv) => {
+              const active = currentConversationId === conv.conversation_id
+              return (
                 <div
-                  className="flex justify-between items-start gap-2 cursor-pointer"
-                  onClick={() => onSelectConversation(conv.conversation_id)}
+                  key={conv.conversation_id}
+                  className={`p-3 rounded-lg transition-colors ${
+                    active
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700 text-gray-100 hover:bg-gray-600'
+                  }`}
                 >
-                  <div className="truncate font-medium text-sm">{conv.title}</div>
-                  <button
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      onDeleteConversation(conv.conversation_id)
-                    }}
-                    className="text-gray-300 hover:text-red-300"
-                    title="Delete conversation"
-                  >
-                    &times;
-                  </button>
+                  <div className="flex justify-between items-center gap-2">
+                    {editingId === conv.conversation_id ? (
+                      <input
+                        type="text"
+                        value={draftTitle}
+                        onChange={(e) => setDraftTitle(e.target.value)}
+                        className="w-full bg-gray-900 border border-gray-600 text-white rounded px-2 py-1"
+                        onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                      />
+                    ) : (
+                      <button
+                        className="text-left w-full truncate font-medium text-sm"
+                        onClick={() => onSelectConversation(conv.conversation_id)}
+                      >
+                        {conv.title || 'Untitled Conversation'}
+                      </button>
+                    )}
+
+                    <div className="flex items-center gap-1">
+                      {editingId === conv.conversation_id ? (
+                        <button
+                          onClick={saveEdit}
+                          className="text-xs bg-green-500 hover:bg-green-600 px-2 py-1 rounded"
+                        >
+                          Save
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => startEdit(conv)}
+                          className="text-xs bg-yellow-500 hover:bg-yellow-600 px-2 py-1 rounded"
+                        >
+                          Edit
+                        </button>
+                      )}
+                      <button
+                        onClick={() => onDeleteConversation(conv.conversation_id)}
+                        className="text-xs bg-red-500 hover:bg-red-600 px-2 py-1 rounded"
+                        title="Delete conversation"
+                      >
+                        Del
+                      </button>
+                    </div>
+                  </div>
+                  <div className="text-xs opacity-70">
+                    {conv.message_count || 0} messages
+                  </div>
                 </div>
-                <div className="text-xs opacity-70">
-                  {conv.message_count || 0} messages
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
 
-      {/* Footer */}
       <div className="border-t border-gray-700 p-4 space-y-2">
         <button className="w-full text-left text-gray-300 hover:text-white text-sm px-3 py-2 rounded hover:bg-gray-700 transition-colors">
           Settings
@@ -79,7 +123,7 @@ const ConversationList = ({
         </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
 export default ConversationList;

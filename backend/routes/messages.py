@@ -44,6 +44,7 @@ async def send_message(request: ChatRequest):
             conversation_id=request.conversation_id,
             use_rag=request.use_rag if hasattr(request, 'use_rag') else False,
             system_prompt=request.system_prompt if hasattr(request, 'system_prompt') else None,
+            model=request.model if hasattr(request, 'model') else None,
         )
         
         if "error" in response:

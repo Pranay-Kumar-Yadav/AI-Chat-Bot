@@ -111,6 +111,7 @@ class LLMService:
         user_message: str,
         memory: ConversationMemory,
         use_rag_context: Optional[str] = None,
+        model_name: Optional[str] = None,
     ) -> Tuple[str, int]:
         """
         Generate AI response using OpenAI.
@@ -143,7 +144,7 @@ class LLMService:
                 logger.debug("Using RAG context for response generation")
 
             # Call OpenAI API
-            response = await self._call_openai_async(messages)
+            response = await self._call_openai_async(messages, model_name=model_name)
 
             # Extract response text and tokens
             response_text = response.get("choices", [{}])[0].get("message", {}).get("content", "")
@@ -163,7 +164,7 @@ class LLMService:
             logger.error(f"Error generating response: {e}")
             raise
 
-    async def _call_openai_async(self, messages: List[dict]) -> dict:
+    async def _call_openai_async(self, messages: List[dict], model_name: Optional[str] = None) -> dict:
         """
         Call OpenAI API asynchronously.
 
@@ -183,7 +184,7 @@ class LLMService:
             }
 
             payload = {
-                "model": settings.model_name,
+                "model": model_name or settings.model_name,
                 "messages": messages,
                 "temperature": settings.temperature,
                 "max_tokens": settings.max_tokens,

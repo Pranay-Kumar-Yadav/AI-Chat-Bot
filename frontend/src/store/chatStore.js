@@ -23,7 +23,9 @@ const persistState = (state) => {
       JSON.stringify({
         conversations: state.conversations,
         currentConversationId: state.currentConversationId,
-        useRAG: state.useRAG
+        useRAG: state.useRAG,
+        model: state.model,
+        systemPrompt: state.systemPrompt,
       })
     )
   } catch (error) {
@@ -38,6 +40,8 @@ const useChatStore = create((set, get) => ({
   conversationStats: null,
   isLoading: false,
   useRAG: persistedData.useRAG ?? true,
+  model: persistedData.model || 'gpt-3.5-turbo',
+  systemPrompt: persistedData.systemPrompt || 'You are a helpful AI assistant.',
   lastError: null,
 
   loadConversations: async () => {
@@ -72,10 +76,10 @@ const useChatStore = create((set, get) => ({
     }
   },
 
-  newConversation: async (title = 'New Conversation') => {
+  newConversation: async (title = 'New Conversation', systemPrompt = '') => {
     set({ isLoading: true, lastError: null })
     try {
-      const conv = await APIClient.createConversation({ title })
+      const conv = await APIClient.createConversation(title, systemPrompt)
       set((state) => ({ conversations: [conv, ...state.conversations], currentConversationId: conv.conversation_id }))
       persistState(get())
       await get().selectConversation(conv.conversation_id)
@@ -114,6 +118,41 @@ const useChatStore = create((set, get) => ({
     }
   },
 
+  updateConversation: async (conversationId, title) => {
+    set({ isLoading: true, lastError: null })
+    try {
+      const updatedConversation = await APIClient.updateConversation(conversationId, title)
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.conversation_id === conversationId ? { ...c, title: updatedConversation.title } : c
+        )
+      }))
+      persistState(get())
+      return updatedConversation
+    } catch (error) {
+      console.error('updateConversation error', error)
+      set({ lastError: error })
+    } finally {
+      set({ isLoading: false })
+    }
+  },
+
+  removeMessage: (messageId) => {
+    set((state) => ({
+      messages: state.messages.filter((m) => m.message_id !== messageId),
+    }))
+  },
+
+  retryMessage: async (messageId) => {
+    const message = get().messages.find((m) => m.message_id === messageId)
+    if (!message || message.role !== 'user') return
+
+    try {
+      await get().sendMessage(message.content)
+    } catch (error) {
+      console.error('retryMessage error', error)
+    }
+  },
   clearConversation: async () => {
     const conversationId = get().currentConversationId
     if (!conversationId) return
@@ -131,7 +170,7 @@ const useChatStore = create((set, get) => ({
   },
 
   sendMessage: async (content) => {
-    const { currentConversationId, useRAG, messages } = get()
+    const { currentConversationId, useRAG, model, systemPrompt, messages } = get()
     if (!currentConversationId || !content.trim()) return
 
     const tempMessage = {
@@ -141,21 +180,21 @@ const useChatStore = create((set, get) => ({
       content,
       timestamp: new Date().toISOString(),
       tokens_used: 0,
-      model: null
+      model: null,
     }
 
     set({ messages: [...messages, tempMessage], isLoading: true, lastError: null })
 
     try {
-      await APIClient.sendMessage(currentConversationId, { content, use_rag: useRAG })
+      await APIClient.sendMessage(content, currentConversationId, useRAG, systemPrompt, model)
       const updatedMessages = await APIClient.getMessageHistory(currentConversationId)
       const updatedStats = await APIClient.getConversationStats(currentConversationId)
       set({ messages: updatedMessages, conversationStats: updatedStats })
     } catch (error) {
       console.error('sendMessage error', error)
-      set ({
+      set({
         messages: get().messages.filter((m) => m.message_id !== tempMessage.message_id),
-        lastError: error
+        lastError: error,
       })
       throw error
     } finally {
@@ -165,6 +204,16 @@ const useChatStore = create((set, get) => ({
 
   setRAG: (value) => {
     set({ useRAG: value })
+    persistState(get())
+  },
+
+  setModel: (model) => {
+    set({ model })
+    persistState(get())
+  },
+
+  setSystemPrompt: (systemPrompt) => {
+    set({ systemPrompt })
     persistState(get())
   }
 }))

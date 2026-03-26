@@ -40,6 +40,7 @@ class ChatService:
         conversation_id: Optional[str] = None,
         use_rag: bool = False,
         system_prompt: Optional[str] = None,
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Send message and get AI response.
@@ -106,10 +107,15 @@ class ChatService:
                     logger.warning(f"RAG augmentation failed: {e}")
 
             # Generate LLM response
+            if system_prompt:
+                self.llm_service.memory.system_prompt = system_prompt
+
             try:
-                response_text = await self.llm_service.generate_response(
-                    query=query,
-                    system_prompt=system_prompt,
+                response_text, _ = await self.llm_service.generate_response(
+                    user_message=query,
+                    memory=self.llm_service.memory,
+                    use_rag_context=query if use_rag else None,
+                    model_name=model
                 )
             except Exception as e:
                 logger.error(f"LLM generation failed: {e}")

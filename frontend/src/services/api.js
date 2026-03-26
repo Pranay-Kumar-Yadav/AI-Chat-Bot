@@ -74,14 +74,19 @@ class APIClient {
 
   // ==================== Messages ====================
 
-  async sendMessage(message, conversationId = null, useRAG = false) {
+  async sendMessage(message, conversationId = null, useRAG = false, systemPrompt = '', model = '') {
+    const body = {
+      message,
+      conversation_id: conversationId,
+      use_rag: useRAG,
+    }
+
+    if (systemPrompt) body.system_prompt = systemPrompt
+    if (model) body.model = model
+
     return this.request('/message/send', {
       method: 'POST',
-      body: JSON.stringify({
-        message,
-        conversation_id: conversationId,
-        use_rag: useRAG,
-      }),
+      body: JSON.stringify(body),
     });
   }
 

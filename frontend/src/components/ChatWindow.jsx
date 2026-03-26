@@ -6,7 +6,7 @@
 import React, { useEffect, useRef } from 'react';
 import ChatMessage from './ChatMessage';
 
-const ChatWindow = ({ messages = [], isLoading = false }) => {
+const ChatWindow = ({ messages = [], isLoading = false, onDeleteMessage, onRetryMessage }) => {
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -29,11 +29,30 @@ const ChatWindow = ({ messages = [], isLoading = false }) => {
       ) : (
         <>
           {messages.map((msg, index) => (
-            <ChatMessage
-              key={index}
-              message={msg}
-              isUser={msg.role === 'user'}
-            />
+            <div key={msg.message_id || index} className="relative group">
+              <ChatMessage
+                message={msg}
+                isUser={msg.role === 'user'}
+              />
+              <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+                {msg.role === 'user' && onRetryMessage && (
+                  <button
+                    onClick={() => onRetryMessage(msg.message_id)}
+                    className="text-xs text-blue-400 hover:text-white bg-black/50 hover:bg-blue-500 px-2 py-1 rounded"
+                  >
+                    Retry
+                  </button>
+                )}
+                {onDeleteMessage && (
+                  <button
+                    onClick={() => onDeleteMessage(msg.message_id)}
+                    className="text-xs text-red-400 hover:text-white bg-black/50 hover:bg-red-500 px-2 py-1 rounded"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
           ))}
           {isLoading && (
             <div className="flex justify-start mb-4">

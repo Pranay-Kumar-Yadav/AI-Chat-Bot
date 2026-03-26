@@ -16,6 +16,8 @@ const ChatPage = () => {
     messages,
     isLoading,
     useRAG,
+    model,
+    systemPrompt,
     conversationStats,
     conversations,
     lastError,
@@ -25,7 +27,12 @@ const ChatPage = () => {
     clearConversation,
     sendMessage,
     deleteConversation,
-    setRAG
+    updateConversation,
+    removeMessage,
+    retryMessage,
+    setRAG,
+    setModel,
+    setSystemPrompt
   } = useChatStore();
 
   useEffect(() => {
@@ -40,7 +47,7 @@ const ChatPage = () => {
   }, [currentConversationId]);
 
   const handleNewConversation = async () => {
-    await newConversation('New Conversation')
+    await newConversation('New Conversation', systemPrompt)
   };
 
   const handleSelectConversation = async (conversationId) => {
@@ -77,31 +84,67 @@ const ChatPage = () => {
         onSelectConversation={handleSelectConversation}
         onNewConversation={handleNewConversation}
         onDeleteConversation={deleteConversation}
+        onRenameConversation={updateConversation}
       />
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col">
         {/* Header */}
         {currentConversationId && (
-          <div className="border-b border-gray-700 bg-gray-800 p-4 flex justify-between items-center">
-            <div>
-              <h1 className="text-xl font-semibold text-white">Chat</h1>
-              {conversationStats && (
-                <p className="text-sm text-gray-400">
-                  {conversationStats.message_count} messages • {conversationStats.token_count} tokens
-                </p>
-              )}
+          <>
+            <div className="border-b border-gray-700 bg-gray-800 p-4 flex justify-between items-center">
+              <div>
+                <h1 className="text-xl font-semibold text-white">Chat</h1>
+                {conversationStats && (
+                  <p className="text-sm text-gray-400">
+                    {conversationStats.message_count} messages • {conversationStats.token_count} tokens
+                  </p>
+                )}
+              </div>
+              <button
+                onClick={handleClearConversation}
+                className="text-gray-400 hover:text-red-400 transition-colors p-2 rounded hover:bg-gray-700"
+                title="Clear conversation"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" />
+                </svg>
+              </button>
             </div>
-            <button
-              onClick={handleClearConversation}
-              className="text-gray-400 hover:text-red-400 transition-colors p-2 rounded hover:bg-gray-700"
-              title="Clear conversation"
-            >
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" />
-              </svg>
-            </button>
-          </div>
+
+            <div className="border-b border-gray-700 bg-gray-800 p-4 space-y-3">
+              <div className="flex flex-wrap gap-3 items-center">
+                <label className="text-gray-300 text-sm">Model:</label>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="bg-gray-900 text-white border border-gray-600 rounded px-2 py-1"
+                >
+                  <option value="gpt-3.5-turbo">gpt-3.5-turbo</option>
+                  <option value="gpt-4o">gpt-4o</option>
+                  <option value="text-davinci-003">text-davinci-003</option>
+                </select>
+
+                <label className="text-gray-300 text-sm">RAG:</label>
+                <input
+                  type="checkbox"
+                  checked={useRAG}
+                  onChange={(e) => setRAG(e.target.checked)}
+                  className="h-4 w-4 rounded"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-gray-300 text-sm">System Prompt</label>
+                <textarea
+                  value={systemPrompt}
+                  onChange={(e) => setSystemPrompt(e.target.value)}
+                  className="w-full bg-gray-900 text-white border border-gray-600 rounded px-2 py-2 min-h-[72px]"
+                  placeholder="You are a helpful assistant."
+                />
+              </div>
+            </div>
+          </>
         )}
 
         {/* Chat Messages */}
@@ -123,7 +166,12 @@ const ChatPage = () => {
               </div>
             </div>
           ) : (
-            <ChatWindow messages={messages} isLoading={isLoading} />
+            <ChatWindow
+              messages={messages}
+              isLoading={isLoading}
+              onDeleteMessage={removeMessage}
+              onRetryMessage={retryMessage}
+            />
           )}
         </div>
 

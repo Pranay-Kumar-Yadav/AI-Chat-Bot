@@ -12,6 +12,7 @@ const Sidebar = ({
   onSelectConversation,
   onNewConversation,
   onDeleteConversation,
+  onRenameConversation,
   isLoading = false
 }) => {
   const handleNewConversation = async () => {
