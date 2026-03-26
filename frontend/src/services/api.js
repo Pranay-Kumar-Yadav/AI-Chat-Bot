@@ -34,7 +34,7 @@ class APIClient {
   // ==================== Health Checks ====================
 
   async getHealth() {
-    return this.request('/health/status');
+    return this.request('/health');
   }
 
   // ==================== Conversations ====================
