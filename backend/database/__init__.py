@@ -11,6 +11,3 @@ __all__ = [
     "ConversationQueries",
     "MessageQueries",
 ]
-    "ConversationQueries",
-    "MessageQueries",
-]
