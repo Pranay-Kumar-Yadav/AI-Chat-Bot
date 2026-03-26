@@ -1,13 +1,43 @@
 import { create } from 'zustand'
 import APIClient from '../services/api'
 
+const hydrateState = () => {
+  if (typeof window === 'undefined') return {}
+  try {
+    const saved = localStorage.getItem('chatStore')
+    if (!saved) return {}
+    return JSON.parse(saved)
+  } catch (error) {
+    console.warn('Failed to hydrate chat store', error)
+    return {}
+  }
+}
+
+const persistedData = hydrateState()
+
+const persistState = (state) => {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(
+      'chatStore',
+      JSON.stringify({
+        conversations: state.conversations,
+        currentConversationId: state.currentConversationId,
+        useRAG: state.useRAG
+      })
+    )
+  } catch (error) {
+    console.warn('Failed to persist chat store', error)
+  }
+}
+
 const useChatStore = create((set, get) => ({
-  conversations: [],
-  currentConversationId: null,
+  conversations: persistedData.conversations || [],
+  currentConversationId: persistedData.currentConversationId || null,
   messages: [],
   conversationStats: null,
   isLoading: false,
-  useRAG: true,
+  useRAG: persistedData.useRAG ?? true,
   lastError: null,
 
   loadConversations: async () => {
@@ -15,6 +45,7 @@ const useChatStore = create((set, get) => ({
     try {
       const conversations = await APIClient.listConversations()
       set({ conversations })
+      persistState(get())
       return conversations
     } catch (error) {
       console.error('loadConversations error', error)
@@ -26,6 +57,7 @@ const useChatStore = create((set, get) => ({
 
   selectConversation: async (conversationId) => {
     set({ currentConversationId: conversationId, isLoading: true, lastError: null })
+    persistState(get())
     try {
       const [messages, conversationStats] = await Promise.all([
         APIClient.getMessageHistory(conversationId),
@@ -45,6 +77,7 @@ const useChatStore = create((set, get) => ({
     try {
       const conv = await APIClient.createConversation({ title })
       set((state) => ({ conversations: [conv, ...state.conversations], currentConversationId: conv.conversation_id }))
+      persistState(get())
       await get().selectConversation(conv.conversation_id)
       return conv
     } catch (error) {
@@ -67,6 +100,7 @@ const useChatStore = create((set, get) => ({
           currentConversationId: nuCurrent
         }
       })
+      persistState(get())
       if (get().currentConversationId) {
         await get().selectConversation(get().currentConversationId)
       } else {
@@ -129,7 +163,10 @@ const useChatStore = create((set, get) => ({
     }
   },
 
-  setRAG: (value) => set({ useRAG: value })
+  setRAG: (value) => {
+    set({ useRAG: value })
+    persistState(get())
+  }
 }))
 
 export default useChatStore

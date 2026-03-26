@@ -4,6 +4,9 @@
  */
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const ChatMessage = ({ message, isUser }) => {
   const messageClass = isUser
@@ -19,7 +22,26 @@ const ChatMessage = ({ message, isUser }) => {
   return (
     <div className={containerClass + ' mb-4'}>
       <div className={messageClass + ' max-w-xs md:max-w-md lg:max-w-lg px-4 py-3'}>
-        <p className="text-sm break-words">{message.content}</p>
+        <ReactMarkdown
+          className="text-sm break-words prose prose-invert"
+          components={{
+            code({ node, inline, className, children, ...props }) {
+              const match = /language-(\w+)/.exec(className || '');
+              return !inline && match ? (
+                <SyntaxHighlighter style={oneDark} language={match[1]} PreTag="div" {...props}>
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              ) : (
+                <code className={className + ' bg-gray-800 rounded px-1'} {...props}>
+                  {children}
+                </code>
+              );
+            }
+          }}
+        >
+          {message.content || ''}
+        </ReactMarkdown>
+
         {message.metadata && (
           <div className="text-xs opacity-70 mt-2">
             {message.metadata.tokens_used && (
