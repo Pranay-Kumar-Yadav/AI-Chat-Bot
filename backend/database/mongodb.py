@@ -80,12 +80,13 @@ class Database:
 
     # ==================== Conversation Operations ====================
 
-    async def create_conversation(self, system_prompt: str = "") -> str:
+    async def create_conversation(self, system_prompt: str = "", title: str = "New Chat") -> str:
         """
         Create a new conversation.
 
         Args:
             system_prompt: Optional system prompt for the conversation
+            title: Optional title for the conversation
 
         Returns:
             Conversation ID
@@ -98,7 +99,7 @@ class Database:
             "created_at": now,
             "updated_at": now,
             "system_prompt": system_prompt,
-            "title": "New Chat",
+            "title": title,
             "message_count": 0,
         }
 

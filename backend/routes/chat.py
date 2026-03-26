@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime
 from loguru import logger
 
-from backend.models import ChatRequest, ChatResponse, ConversationResponse
+from backend.models import ChatRequest, ChatResponse, ConversationResponse, ConversationCreateRequest
 from backend.database import get_database, ConversationQueries, MessageQueries
 from backend.core import ValidationException, ChatException
 from backend.utils import generate_id, format_response, format_error
@@ -17,22 +17,28 @@ router = APIRouter()
 
 
 @router.post("/conversations", response_model=ConversationResponse)
-async def create_conversation(system_prompt: str = "You are a helpful AI assistant"):
+async def create_conversation(request: ConversationCreateRequest):
     """
     Create a new conversation.
     
     Args:
-        system_prompt: System prompt for the conversation
+        request: ConversationCreateRequest with title and system_prompt
         
     Returns:
         New conversation with ID and metadata
     """
     try:
+        system_prompt = request.system_prompt or "You are a helpful AI assistant"
+        title = request.title or "New Chat"
+        
         if not system_prompt or len(system_prompt.strip()) == 0:
-            raise ValidationException("System prompt cannot be empty")
+            system_prompt = "You are a helpful AI assistant"
+        
+        if not title or len(title.strip()) == 0:
+            title = "New Chat"
         
         db = get_database()
-        conversation_id = await db.create_conversation(system_prompt)
+        conversation_id = await db.create_conversation(system_prompt, title)
         
         conversation = await db.get_conversation(conversation_id)
         

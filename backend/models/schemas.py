@@ -44,6 +44,21 @@ class ChatRequest(BaseModel):
         }
 
 
+class ConversationCreateRequest(BaseModel):
+    """Request schema for creating a new conversation."""
+
+    title: Optional[str] = Field("New Chat", min_length=1, max_length=200)
+    system_prompt: Optional[str] = Field("You are a helpful AI assistant", max_length=5000)
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "title": "Python Discussion",
+                "system_prompt": "You are a helpful Python expert.",
+            }
+        }
+
+
 class ChatResponse(BaseModel):
     """Chat response schema."""
 

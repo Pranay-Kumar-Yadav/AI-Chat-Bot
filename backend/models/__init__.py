@@ -5,6 +5,7 @@ from .schemas import (
     ChatRequest,
     ChatResponse,
     ConversationResponse,
+    ConversationCreateRequest,
     DocumentUploadResponse,
 )
 from .database_models import (
@@ -19,6 +20,7 @@ __all__ = [
     "ChatRequest",
     "ChatResponse",
     "ConversationResponse",
+    "ConversationCreateRequest",
     "DocumentUploadResponse",
     "ConversationDB",
     "MessageDB",
