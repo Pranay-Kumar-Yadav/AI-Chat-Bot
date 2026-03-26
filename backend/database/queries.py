@@ -4,13 +4,15 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from loguru import logger
 
+from .mongodb import Database
+
 
 class ConversationQueries:
     """Conversation-related database queries."""
 
     @staticmethod
     async def get_user_conversations(
-        db: AsyncDatabase, limit: int = 50, skip: int = 0
+        db: Database, limit: int = 50, skip: int = 0
     ) -> List[Dict]:
         """Get all user conversations with pagination."""
         try:
@@ -27,7 +29,7 @@ class ConversationQueries:
             return []
 
     @staticmethod
-    async def get_conversation_stats(db: AsyncDatabase, conversation_id: str) -> Dict:
+    async def get_conversation_stats(db: Database, conversation_id: str) -> Dict:
         """Get conversation statistics."""
         try:
             conversations = db["conversations"]
@@ -62,7 +64,7 @@ class ConversationQueries:
             return {}
 
     @staticmethod
-    async def clear_old_conversations(db: AsyncDatabase, days: int = 30) -> int:
+    async def clear_old_conversations(db: Database, days: int = 30) -> int:
         """Clear conversations older than specified days."""
         try:
             conversations = db["conversations"]
@@ -83,7 +85,7 @@ class MessageQueries:
     """Message-related database queries."""
 
     @staticmethod
-    async def get_message_count(db: AsyncDatabase, conversation_id: str) -> int:
+    async def get_message_count(db: Database, conversation_id: str) -> int:
         """Get total message count for a conversation."""
         try:
             messages = db["messages"]
@@ -95,7 +97,7 @@ class MessageQueries:
             return 0
 
     @staticmethod
-    async def get_total_tokens(db: AsyncDatabase, conversation_id: str) -> int:
+    async def get_total_tokens(db: Database, conversation_id: str) -> int:
         """Get total tokens used in a conversation."""
         try:
             messages = db["messages"]
@@ -113,7 +115,7 @@ class MessageQueries:
 
     @staticmethod
     async def export_conversation(
-        db: AsyncDatabase, conversation_id: str
+        db: Database, conversation_id: str
     ) -> Dict[str, Any]:
         """Export entire conversation as JSON."""
         try:
