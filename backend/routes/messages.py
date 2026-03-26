@@ -107,7 +107,7 @@ async def get_message_history(
 
 
 @router.post("/message/clear")
-async def clear_conversation(conversation_id: str):
+async def clear_conversation(conversation_id: str = Query(...)):
     """
     Clear conversation history.
     
@@ -141,7 +141,7 @@ async def clear_conversation(conversation_id: str):
 
 
 @router.get("/message/stream-placeholder")
-async def placeholder_streaming_endpoint(conversation_id: str):
+async def placeholder_streaming_endpoint(conversation_id: str = Query(...)):
     """
     Placeholder for streaming endpoint.
     Will be replaced in Checkpoint 4 with actual streaming.

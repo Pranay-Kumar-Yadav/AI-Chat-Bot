@@ -97,9 +97,8 @@ class APIClient {
 
   async clearConversation(conversationId) {
     const params = new URLSearchParams({ conversation_id: conversationId });
-    return this.request(`/message/clear`, {
+    return this.request(`/message/clear?${params}`, {
       method: 'POST',
-      body: JSON.stringify({ conversation_id: conversationId }),
     });
   }
 
