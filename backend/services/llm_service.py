@@ -1,13 +1,37 @@
 """LLM service for OpenAI integration with LangChain."""
 
-from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory, ChatMessageHistory
-from langchain.schema import HumanMessage, AIMessage, SystemMessage
-from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
-from typing import List, Optional, Tuple
+import importlib
+from typing import Any, List, Optional, Tuple
 from loguru import logger
 
 from backend.config import settings
+
+ChatOpenAI: Any = None
+ConversationBufferMemory: Any = None
+ChatMessageHistory: Any = None
+HumanMessage: Any = None
+AIMessage: Any = None
+SystemMessage: Any = None
+StreamingStdOutCallbackHandler: Any = None
+
+try:
+    langchain_openai = importlib.import_module("langchain_openai")
+    ChatOpenAI = langchain_openai.ChatOpenAI
+
+    langchain_memory = importlib.import_module("langchain.memory")
+    ConversationBufferMemory = langchain_memory.ConversationBufferMemory
+    ChatMessageHistory = langchain_memory.ChatMessageHistory
+
+    langchain_schema = importlib.import_module("langchain.schema")
+    HumanMessage = langchain_schema.HumanMessage
+    AIMessage = langchain_schema.AIMessage
+    SystemMessage = langchain_schema.SystemMessage
+
+    langchain_callbacks = importlib.import_module("langchain.callbacks.streaming_stdout")
+    StreamingStdOutCallbackHandler = langchain_callbacks.StreamingStdOutCallbackHandler
+except ImportError:
+    # LangChain optional dependency is missing; service methods will raise when used.
+    pass
 
 
 class ConversationMemory:
@@ -93,6 +117,12 @@ class LLMService:
 
     def __init__(self):
         """Initialize LLM service."""
+        if ChatOpenAI is None:
+            raise ImportError(
+                "langchain and langchain-openai packages are required for LLMService. "
+                "Install with: pip install langchain langchain-openai"
+            )
+
         try:
             self.llm = ChatOpenAI(
                 model_name=settings.model_name,

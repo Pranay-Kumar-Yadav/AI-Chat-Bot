@@ -5,14 +5,17 @@ Uses environment variables for configuration.
 
 from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
-from typing import List
+from typing import List, ClassVar
+from pathlib import Path
 import os
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    model_config = ConfigDict(env_file=".env", case_sensitive=False, protected_namespaces=())
+    # Load .env from repository root and/or backend directory for flexible local runs.
+    env_path: ClassVar[Path] = Path(__file__).resolve().parents[2] / ".env"
+    model_config = ConfigDict(env_file=str(env_path), case_sensitive=False, protected_namespaces=())
 
     # API Configuration
     api_host: str = "0.0.0.0"

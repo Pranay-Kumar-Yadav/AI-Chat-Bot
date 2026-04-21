@@ -58,14 +58,14 @@ class RAGService:
         try:
             logger.info(f"Processing document: {filename}")
 
-            # Process document into chunks
-            chunks = await self.processor.process_file(file_path)
+            # Process document into text + chunks
+            full_text, chunks = await self.processor.process_file(file_path)
             if not chunks:
                 logger.warning(f"No chunks extracted from {filename}")
                 return {"error": "Could not extract text from document"}
 
             # Get document statistics
-            stats = self.processor.get_statistics()
+            stats = self.processor.get_statistics(full_text, chunks)
 
             # Create collection name from conversation ID
             collection_name = f"conv_{conversation_id}"

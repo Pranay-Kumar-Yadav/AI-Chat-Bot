@@ -27,7 +27,7 @@ aiofiles==23.2.1
 httpx==0.25.1
 
 # CORS
-python-cors==1.0.1
+# python-cors is not required for FastAPI; using built-in CORS middleware.
 
 # Logging
 loguru==0.7.2

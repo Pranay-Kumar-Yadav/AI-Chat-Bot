@@ -63,45 +63,80 @@ ai-chatbot/
 └── README.md
 ```
 
-## Quick Start
+## Quick Start (Local Development)
 
-See detailed instructions below. This README will be completed in Checkpoint 10.
-
-## Setup Instructions
+This project is now ready for local development with a single setup path.
 
 ### 1. Prerequisites
 - Python 3.11+
 - Node.js 18+
-- MongoDB
-- OpenAI API Key
+- MongoDB (local or Docker)
+- OpenAI API Key (for AI responses)
 
-### 2. Environment Setup
-- Copy `.env.example` to `.env`
-- Fill in required API keys and configuration
+### 2. Clone and set env
+```bash
+git clone <repo-url>
+cd AI-Chat-Bot
+cp .env.example .env
+# On Windows use: copy .env.example .env
+```
 
-### 3. Backend Setup
+Edit `.env` and set `OPENAI_API_KEY`.
+
+### 3. Backend setup
 ```bash
 cd backend
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Windows
+venv\Scripts\activate
+# macOS/Linux
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 4. Frontend Setup
+### 4. Frontend setup
 ```bash
-cd frontend
+cd ../frontend
 npm install
 ```
 
-### 5. Run Locally
-- Backend: `uvicorn backend.main:app --reload`
-- Frontend: `npm run dev`
-- MongoDB: Use Docker or local installation
+### 5. Start MongoDB
+Option A (Docker):
+```bash
+docker run -d --name ai_chatbot_mongodb -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=password -e MONGO_INITDB_DATABASE=ai_chatbot mongo:7.0
+```
+Option B (local): ensure MongoDB is running and listens on `mongodb://localhost:27017`
 
-### 6. Docker Setup
+### 6. Launch backend + frontend
+```bash
+# terminal 1
+cd backend
+venv\Scripts\activate    # windows
+uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+
+# terminal 2
+cd frontend
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+
+### 7. Verify health
+- Visit `http://localhost:8000/api/health`
+- Visit `http://localhost:5173`
+
+---
+
+## Optional: Docker Compose
 ```bash
 docker-compose up -d
 ```
+- Backend: `http://localhost:8000`
+- Frontend: `http://localhost:5173`
+
+## Important fixes implemented
+- `backend/services/rag_service.py`: fixed document processing to unpack `full_text, chunks` and to call `get_statistics(full_text, chunks)`
+- `backend/config/settings.py`: `.env` loading is now robust from repo root to avoid path issues
+
+---
 
 ## API Endpoints
 
