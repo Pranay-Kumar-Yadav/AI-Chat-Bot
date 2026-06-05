@@ -183,6 +183,7 @@ async def list_documents(
         db = get_database()
         documents = await db.get_documents_for_conversation(
             conversation_id=conversation_id,
+            skip=skip,
             limit=limit,
         )
         

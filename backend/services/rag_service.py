@@ -31,10 +31,13 @@ class RAGService:
     async def initialize(self):
         """Initialize RAG service (called on startup)."""
         try:
-            self.db = await get_database()
+            self.db = get_database()
+            if self.db and self.db.db is None:
+                await self.db.connect()
             logger.info("RAG service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize RAG service: {e}")
+            raise
 
     async def upload_document(
         self,

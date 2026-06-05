@@ -36,14 +36,15 @@ class VectorStore:
         # Create database directory if needed
         Path(self.db_path).mkdir(parents=True, exist_ok=True)
 
-        # Initialize ChromaDB client
+        # Initialize ChromaDB client using the new Chroma configuration API.
+        # Avoid deprecated legacy settings like chroma_db_impl.
         chroma_settings = Settings(
-            chroma_db_impl="duckdb+parquet",
             persist_directory=self.db_path,
+            is_persistent=True,
             anonymized_telemetry=False,
         )
 
-        self.client = chromadb.Client(chroma_settings)
+        self.client = chromadb.Client(settings=chroma_settings)
         logger.info(f"Initialized ChromaDB at {self.db_path}")
 
         # Initialize embedding model

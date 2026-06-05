@@ -27,6 +27,7 @@ class ChatRequest(BaseModel):
 
     message: str = Field(..., min_length=1, max_length=10000)
     conversation_id: Optional[str] = None
+    use_rag: bool = False
     model: Optional[str] = None
     system_prompt: Optional[str] = None
     temperature: Optional[float] = Field(None, ge=0, le=2)
@@ -62,20 +63,26 @@ class ConversationCreateRequest(BaseModel):
 class ChatResponse(BaseModel):
     """Chat response schema."""
 
-    message: str
     conversation_id: str
-    timestamp: datetime
+    message: str
+    response: str
     model: str
-    tokens_used: Optional[int] = None
+    input_tokens: int
+    output_tokens: int
+    timestamp: datetime
+    rag_used: bool = False
 
     class Config:
         json_schema_extra = {
             "example": {
-                "message": "Python is a programming language.",
                 "conversation_id": "conv_123",
-                "timestamp": "2024-01-01T12:00:00",
+                "message": "What is Python?",
+                "response": "Python is a programming language.",
                 "model": "gpt-3.5-turbo",
-                "tokens_used": 45,
+                "input_tokens": 10,
+                "output_tokens": 15,
+                "timestamp": "2024-01-01T12:00:00",
+                "rag_used": False,
             }
         }
 

@@ -19,12 +19,26 @@ class APIClient {
         headers,
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || `HTTP ${response.status}`);
+        const errorMessage = responseData?.detail || responseData?.error || responseData?.message || `HTTP ${response.status}`;
+        throw new Error(errorMessage);
       }
 
-      return await response.json();
+      if (
+        responseData &&
+        typeof responseData === 'object' &&
+        'status' in responseData &&
+        'data' in responseData
+      ) {
+        if (responseData.status !== 'success') {
+          throw new Error(responseData.error || responseData.message || 'Unknown API error');
+        }
+        return responseData.data;
+      }
+
+      return responseData;
     } catch (error) {
       console.error(`API Error: ${endpoint}`, error);
       throw error;
@@ -40,7 +54,7 @@ class APIClient {
   // ==================== Conversations ====================
 
   async createConversation(title = 'New Conversation', systemPrompt = '') {
-    return this.request('/chat/conversations', {
+    return this.request('/conversations', {
       method: 'POST',
       body: JSON.stringify({ title, system_prompt: systemPrompt }),
     });
@@ -48,28 +62,28 @@ class APIClient {
 
   async listConversations(limit = 50, offset = 0) {
     const params = new URLSearchParams({ limit, offset });
-    return this.request(`/chat/conversations?${params}`);
+    return this.request(`/conversations?${params}`);
   }
 
   async getConversation(conversationId) {
-    return this.request(`/chat/conversations/${conversationId}`);
+    return this.request(`/conversations/${conversationId}`);
   }
 
   async updateConversation(conversationId, title) {
-    return this.request(`/chat/conversations/${conversationId}`, {
+    return this.request(`/conversations/${conversationId}`, {
       method: 'PATCH',
       body: JSON.stringify({ title }),
     });
   }
 
   async deleteConversation(conversationId) {
-    return this.request(`/chat/conversations/${conversationId}`, {
+    return this.request(`/conversations/${conversationId}`, {
       method: 'DELETE',
     });
   }
 
   async getConversationStats(conversationId) {
-    return this.request(`/chat/conversations/${conversationId}/stats`);
+    return this.request(`/conversations/${conversationId}/stats`);
   }
 
   // ==================== Messages ====================

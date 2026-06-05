@@ -42,9 +42,9 @@ async def send_message(request: ChatRequest):
         response = await chat_service.send_message(
             message=request.message,
             conversation_id=request.conversation_id,
-            use_rag=request.use_rag if hasattr(request, 'use_rag') else False,
-            system_prompt=request.system_prompt if hasattr(request, 'system_prompt') else None,
-            model=request.model if hasattr(request, 'model') else None,
+            use_rag=request.use_rag,
+            system_prompt=request.system_prompt,
+            model=request.model,
         )
         
         if "error" in response:

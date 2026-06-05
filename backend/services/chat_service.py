@@ -5,7 +5,7 @@ from datetime import datetime
 from loguru import logger
 
 from backend.database.mongodb import get_database
-from backend.services.llm_service import get_llm_service, LLMService
+from backend.services.llm_service import ConversationMemory, get_llm_service, LLMService
 from backend.services.rag_service import get_rag_service, RAGService
 from backend.models.schemas import ChatMessage, ChatResponse
 from backend.utils.helpers import generate_id, get_current_timestamp
@@ -27,12 +27,16 @@ class ChatService:
     async def initialize(self):
         """Initialize chat service (called on startup)."""
         try:
-            self.db = await get_database()
+            self.db = get_database()
+            if self.db and self.db.db is None:
+                await self.db.connect()
+
             self.llm_service = get_llm_service()
             self.rag_service = await get_rag_service()
             logger.info("Chat service initialized successfully")
         except Exception as e:
             logger.error(f"Failed to initialize chat service: {e}")
+            raise
 
     async def send_message(
         self,
@@ -74,24 +78,32 @@ class ChatService:
             if self.db:
                 await self.db.save_message(
                     conversation_id=conversation_id,
-                    message=user_message.dict(),
+                    role=user_message.role,
+                    content=user_message.content,
+                    tokens_used=0,
                 )
 
             # Get conversation history (for context)
-            history = []
+            history_docs = []
+            conversation_doc = None
             if self.db:
                 history_docs = await self.db.get_message_history(
                     conversation_id, limit=10
                 )
-                history = [
-                    ChatMessage(**msg) for msg in history_docs
-                ]
+                conversation_doc = await self.db.get_conversation(conversation_id)
 
-            # Add user message to memory
-            self.llm_service.memory.add_message(
-                role="user",
-                content=message,
+            # Initialize conversation memory with the most recent prompt
+            system_prompt_value = (
+                system_prompt
+                or (conversation_doc.get("system_prompt") if conversation_doc else None)
+                or "You are a helpful AI assistant."
             )
+            self.llm_service.memory = ConversationMemory(
+                conversation_id=conversation_id,
+                system_prompt=system_prompt_value,
+            )
+            if history_docs:
+                self.llm_service.memory.add_messages_from_history(history_docs)
 
             # Augment prompt with RAG if requested
             query = message
@@ -110,16 +122,12 @@ class ChatService:
             if system_prompt:
                 self.llm_service.memory.system_prompt = system_prompt
 
-            try:
-                response_text, _ = await self.llm_service.generate_response(
-                    user_message=query,
-                    memory=self.llm_service.memory,
-                    use_rag_context=query if use_rag else None,
-                    model_name=model
-                )
-            except Exception as e:
-                logger.error(f"LLM generation failed: {e}")
-                response_text = "I apologize, but I encountered an error processing your request."
+            response_text, _ = await self.llm_service.generate_response(
+                user_message=query,
+                memory=self.llm_service.memory,
+                use_rag_context=query if use_rag else None,
+                model_name=model
+            )
 
             # Create assistant message
             assistant_message = ChatMessage(
@@ -128,11 +136,17 @@ class ChatService:
                 timestamp=get_current_timestamp(),
             )
 
+            # Get token counts
+            input_tokens = self.llm_service.count_tokens(message)
+            output_tokens = self.llm_service.count_tokens(response_text)
+
             # Save assistant message to database
             if self.db:
                 await self.db.save_message(
                     conversation_id=conversation_id,
-                    message=assistant_message.dict(),
+                    role=assistant_message.role,
+                    content=assistant_message.content,
+                    tokens_used=output_tokens,
                 )
 
             # Add assistant message to memory
@@ -141,16 +155,12 @@ class ChatService:
                 content=response_text,
             )
 
-            # Get token counts
-            input_tokens = self.llm_service.count_tokens(message)
-            output_tokens = self.llm_service.count_tokens(response_text)
-
             # Build response
             chat_response = ChatResponse(
                 conversation_id=conversation_id,
                 message=message,
                 response=response_text,
-                model=self.llm_service.model_info.get("model_name", "unknown"),
+                model=self.llm_service.get_model_info().get("model_name", "unknown"),
                 input_tokens=input_tokens,
                 output_tokens=output_tokens,
                 timestamp=get_current_timestamp(),
@@ -220,7 +230,7 @@ class ChatService:
             conversation_id = generate_id()
 
             conversation_data = {
-                "conversation_id": conversation_id,
+                "_id": conversation_id,
                 "title": title or "New Conversation",
                 "system_prompt": system_prompt or "You are a helpful AI assistant.",
                 "created_at": get_current_timestamp(),
@@ -229,10 +239,12 @@ class ChatService:
             }
 
             if self.db:
+                if self.db.db is None:
+                    await self.db.connect()
                 await self.db.create_conversation(conversation_data)
 
-            # Initialize memory for this conversation
-            if system_prompt:
+            # Initialize memory for this conversation if available
+            if system_prompt and hasattr(self.llm_service, "memory"):
                 self.llm_service.memory.system_prompt = system_prompt
 
             logger.info(f"Created conversation: {conversation_id}")
@@ -257,8 +269,9 @@ class ChatService:
                 # Clear all messages for this conversation
                 await self.db.delete_messages_for_conversation(conversation_id)
 
-            # Reset LLM memory
-            self.llm_service.memory.clear()
+            # Reset LLM memory if initialized
+            if hasattr(self.llm_service, "memory"):
+                self.llm_service.memory.clear()
 
             logger.info(f"Cleared conversation: {conversation_id}")
             return True
@@ -289,8 +302,9 @@ class ChatService:
                     updates={"system_prompt": system_prompt},
                 )
 
-            # Update memory
-            self.llm_service.memory.system_prompt = system_prompt
+            # Update memory if initialized
+            if hasattr(self.llm_service, "memory"):
+                self.llm_service.memory.system_prompt = system_prompt
 
             logger.info(f"Updated system prompt for conversation: {conversation_id}")
             return True

@@ -10,11 +10,15 @@ if (-not (Test-Path .env)) {
 }
 
 # 2) Start MongoDB via Docker if not running
-if (-not (docker ps --format '{{.Names}}' | Select-String -Pattern 'ai_chatbot_mongodb')) {
-  Write-Host "Starting MongoDB container..."
-  docker run -d --name ai_chatbot_mongodb -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=password -e MONGO_INITDB_DATABASE=ai_chatbot mongo:7.0
+if (Get-Command docker -ErrorAction SilentlyContinue) {
+  if (-not (docker ps --format '{{.Names}}' | Select-String -Pattern 'ai_chatbot_mongodb')) {
+    Write-Host "Starting MongoDB container..."
+    docker run -d --name ai_chatbot_mongodb -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=root -e MONGO_INITDB_ROOT_PASSWORD=password -e MONGO_INITDB_DATABASE=ai_chatbot mongo:7.0
+  } else {
+    Write-Host "MongoDB container already running."
+  }
 } else {
-  Write-Host "MongoDB container already running."
+  Write-Host "Docker not installed or not available in PATH. Skipping Docker MongoDB startup. Ensure MongoDB is running locally at mongodb://localhost:27017."
 }
 
 # 3) Start backend
@@ -25,4 +29,5 @@ Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; if (-
 Write-Host "Starting frontend...";
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd frontend; npm install; npm run dev -- --host 0.0.0.0 --port 5173";
 
-Write-Host "Local dev setup started. Open http://localhost:5173 in browser."
+Write-Host "Local dev setup started. Opening http://localhost:5173 in browser..."
+Start-Process "explorer.exe" "http://localhost:5173"

@@ -117,6 +117,16 @@ class LLMService:
 
     def __init__(self):
         """Initialize LLM service."""
+        self.use_mock = not settings.openai_api_key_valid
+
+        if self.use_mock:
+            logger.warning(
+                "OpenAI API key is not configured or is using a placeholder. "
+                "Falling back to mock responses for local development."
+            )
+            self.llm = None
+            return
+
         if ChatOpenAI is None:
             raise ImportError(
                 "langchain and langchain-openai packages are required for LLMService. "
@@ -155,6 +165,13 @@ class LLMService:
             Tuple of (response_message, tokens_used)
         """
         try:
+            if self.use_mock:
+                response_text = self._generate_mock_response(user_message, use_rag_context)
+                tokens_used = self.count_tokens(response_text)
+                memory.add_message("assistant", response_text)
+                logger.debug(f"Generated mock response ({tokens_used} tokens) for conversation")
+                return response_text, tokens_used
+
             # Add user message to memory
             memory.add_message("user", user_message)
 
@@ -204,8 +221,7 @@ class LLMService:
         Returns:
             API response dictionary
         """
-        import aiohttp
-        import json
+        import httpx
 
         try:
             headers = {
@@ -221,22 +237,50 @@ class LLMService:
                 "top_p": settings.top_p,
             }
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(
                     "https://api.openai.com/v1/chat/completions",
                     headers=headers,
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=60)
-                ) as response:
-                    if response.status != 200:
-                        error_data = await response.json()
-                        raise Exception(f"OpenAI API error: {error_data}")
-                    
-                    return await response.json()
+                )
+
+            if response.status_code != 200:
+                raise Exception(f"OpenAI API error: {response.status_code} {response.text}")
+
+            return response.json()
 
         except Exception as e:
             logger.error(f"Error calling OpenAI API: {e}")
             raise
+
+    def _generate_mock_response(
+        self,
+        user_message: str,
+        use_rag_context: Optional[str] = None,
+    ) -> str:
+        """
+        Generate a development mock response when OpenAI is not configured.
+
+        Args:
+            user_message: User message text
+            use_rag_context: Optional RAG context string
+
+        Returns:
+            Mock assistant response
+        """
+        if use_rag_context:
+            return (
+                "(mock) OpenAI is not configured. "
+                "Using provided document context, here is a placeholder answer: "
+                f"{user_message}"
+            )
+
+        return (
+            "(mock) OpenAI is not configured. "
+            "This is a local fallback response for development. "
+            f"You asked: {user_message}"
+        )
+
 
     def count_tokens(self, text: str) -> int:
         """

@@ -17,9 +17,11 @@ const ChatWindow = ({ messages = [], isLoading = false, onDeleteMessage, onRetry
     scrollToBottom();
   }, [messages]);
 
+  const safeMessages = Array.isArray(messages) ? messages : []
+
   return (
     <div className="flex-1 overflow-y-auto bg-gray-900 p-6 space-y-4">
-      {messages.length === 0 ? (
+      {safeMessages.length === 0 ? (
         <div className="flex items-center justify-center h-full text-gray-400">
           <div className="text-center">
             <h2 className="text-2xl font-bold mb-2">Welcome to AI Chatbot</h2>
@@ -28,7 +30,7 @@ const ChatWindow = ({ messages = [], isLoading = false, onDeleteMessage, onRetry
         </div>
       ) : (
         <>
-          {messages.map((msg, index) => (
+          {safeMessages.map((msg, index) => (
             <div key={msg.message_id || index} className="relative group">
               <ChatMessage
                 message={msg}

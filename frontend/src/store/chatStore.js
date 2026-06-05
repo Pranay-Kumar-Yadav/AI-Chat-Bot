@@ -21,7 +21,7 @@ const persistState = (state) => {
     localStorage.setItem(
       'chatStore',
       JSON.stringify({
-        conversations: state.conversations,
+        conversations: Array.isArray(state.conversations) ? state.conversations : [],
         currentConversationId: state.currentConversationId,
         useRAG: state.useRAG,
         model: state.model,
@@ -34,7 +34,7 @@ const persistState = (state) => {
 }
 
 const useChatStore = create((set, get) => ({
-  conversations: persistedData.conversations || [],
+  conversations: Array.isArray(persistedData.conversations) ? persistedData.conversations : [],
   currentConversationId: persistedData.currentConversationId || null,
   messages: [],
   conversationStats: null,
@@ -47,9 +47,21 @@ const useChatStore = create((set, get) => ({
   loadConversations: async () => {
     set({ isLoading: true, lastError: null })
     try {
-      const conversations = await APIClient.listConversations()
+      const response = await APIClient.listConversations()
+      const conversations = response?.conversations || []
       set({ conversations })
       persistState(get())
+
+      const currentConversationId = get().currentConversationId
+      if (conversations.length > 0 && !currentConversationId) {
+        const firstConversationId = conversations[0].conversation_id
+        set({ currentConversationId: firstConversationId })
+        persistState(get())
+        await get().selectConversation(firstConversationId)
+      } else if (conversations.length === 0) {
+        await get().newConversation('New Conversation', get().systemPrompt)
+      }
+
       return conversations
     } catch (error) {
       console.error('loadConversations error', error)

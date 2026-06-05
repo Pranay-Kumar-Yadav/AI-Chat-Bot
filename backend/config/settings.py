@@ -23,9 +23,15 @@ class Settings(BaseSettings):
     api_debug: bool = False
 
     # OpenAI Configuration
-    openai_api_key: str
+    openai_api_key: str = ""
     model_name: str = "gpt-3.5-turbo"
     embedding_model: str = "text-embedding-3-small"
+
+    @property
+    def openai_api_key_valid(self) -> bool:
+        """Return True when the OpenAI API key looks configured."""
+        key = self.openai_api_key.strip().lower()
+        return bool(key) and "your_openai_api_key" not in key and "your_ope" not in key
 
     # MongoDB Configuration
     mongo_uri: str = "mongodb://localhost:27017/ai_chatbot"

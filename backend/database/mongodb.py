@@ -36,13 +36,15 @@ class Database:
             ConnectionFailure: If unable to connect to MongoDB
         """
         try:
-            self.client = motor.motor_asyncio.AsyncIOMotorClient(self.mongo_uri)
-            self.db = self.client[self.db_name]
-            
+            if self.client is None:
+                self.client = motor.motor_asyncio.AsyncIOMotorClient(self.mongo_uri)
+            if self.db is None:
+                self.db = self.client[self.db_name]
+
             # Test connection
             await self.client.admin.command("ping")
             logger.info(f"Successfully connected to MongoDB database: {self.db_name}")
-            
+
             # Create indexes
             await self._create_indexes()
         except (ConnectionFailure, ServerSelectionTimeoutError) as e:
@@ -53,6 +55,8 @@ class Database:
         """Disconnect from MongoDB."""
         if self.client:
             self.client.close()
+            self.client = None
+            self.db = None
             logger.info("Disconnected from MongoDB")
 
     async def _create_indexes(self):
@@ -80,32 +84,53 @@ class Database:
 
     # ==================== Conversation Operations ====================
 
-    async def create_conversation(self, system_prompt: str = "", title: str = "New Chat") -> str:
+    async def create_conversation(
+        self,
+        conversation_data: Optional[Dict[str, Any]] = None,
+        system_prompt: str = "",
+        title: str = "New Chat",
+    ) -> str:
         """
         Create a new conversation.
 
         Args:
+            conversation_data: Optional conversation document data
             system_prompt: Optional system prompt for the conversation
             title: Optional title for the conversation
 
         Returns:
             Conversation ID
         """
+        if self.db is None:
+            raise RuntimeError("Database is not connected")
+
         conversation_id = str(uuid.uuid4())
         now = datetime.utcnow()
 
-        conversation = {
-            "_id": conversation_id,
-            "created_at": now,
-            "updated_at": now,
-            "system_prompt": system_prompt,
-            "title": title,
-            "message_count": 0,
-        }
+        if conversation_data is None:
+            conversation_data = {
+                "_id": conversation_id,
+                "created_at": now,
+                "updated_at": now,
+                "system_prompt": system_prompt,
+                "title": title,
+                "message_count": 0,
+            }
+        else:
+            conversation_data = conversation_data.copy()
+            conversation_id = conversation_data.get("_id", conversation_id)
+            conversation_data["_id"] = conversation_id
+            conversation_data["created_at"] = conversation_data.get("created_at", now)
+            conversation_data["updated_at"] = conversation_data.get("updated_at", now)
+            conversation_data["system_prompt"] = conversation_data.get(
+                "system_prompt", system_prompt
+            )
+            conversation_data["title"] = conversation_data.get("title", title)
+            conversation_data["message_count"] = conversation_data.get("message_count", 0)
 
         try:
             conversations = self.db["conversations"]
-            await conversations.insert_one(conversation)
+            await conversations.insert_one(conversation_data)
             logger.info(f"Created conversation: {conversation_id}")
             return conversation_id
         except Exception as e:
@@ -274,6 +299,33 @@ class Database:
             logger.error(f"Error getting conversation history: {e}")
             return []
 
+    async def get_message_history(
+        self, conversation_id: str, limit: int = 50, offset: int = 0
+    ) -> List[Dict]:
+        """
+        Get message history for a conversation with pagination support.
+
+        Args:
+            conversation_id: Conversation ID
+            limit: Maximum number of messages to return
+            offset: Number of messages to skip
+
+        Returns:
+            List of message documents ordered by timestamp
+        """
+        try:
+            messages = self.db["messages"]
+            cursor = (
+                messages.find({"conversation_id": conversation_id})
+                .sort("timestamp", 1)
+                .skip(offset)
+                .limit(limit)
+            )
+            return await cursor.to_list(length=limit)
+        except Exception as e:
+            logger.error(f"Error getting message history: {e}")
+            return []
+
     async def get_recent_messages(
         self, conversation_id: str, count: int = 10
     ) -> List[Dict]:
@@ -334,37 +386,62 @@ class Database:
 
     # ==================== Document Operations ====================
 
-    async def save_document(
-        self, document_id: str, filename: str, status: str = "processing"
-    ) -> bool:
+    async def save_document(self, document: Dict[str, Any]) -> bool:
         """
         Save document metadata.
 
         Args:
-            document_id: Document ID
-            filename: Original filename
-            status: Processing status (processing, completed, failed)
+            document: Document metadata dictionary
 
         Returns:
             True if saved, False otherwise
         """
         try:
-            document = {
-                "_id": document_id,
-                "document_id": document_id,
-                "filename": filename,
-                "uploaded_at": datetime.utcnow(),
-                "status": status,
-                "chunks_count": 0,
-            }
+            document_data = document.copy()
+            document_data["_id"] = document_data.get("_id") or document_data.get("document_id")
+            document_data["uploaded_at"] = document_data.get("uploaded_at") or datetime.utcnow()
+            document_data["status"] = document_data.get("status") or "processing"
+            document_data["chunk_count"] = document_data.get("chunk_count") or 0
+            document_data["chunks_count"] = document_data.get(
+                "chunks_count", document_data["chunk_count"]
+            )
+            document_data["created_at"] = document_data.get("created_at") or datetime.utcnow()
+            document_data["updated_at"] = document_data.get("updated_at") or datetime.utcnow()
 
             documents = self.db["documents"]
-            await documents.insert_one(document)
-            logger.info(f"Saved document: {document_id}")
+            await documents.insert_one(document_data)
+            logger.info(f"Saved document: {document_data.get('document_id')}")
             return True
         except Exception as e:
             logger.error(f"Error saving document: {e}")
             return False
+
+    async def get_documents_for_conversation(
+        self, conversation_id: str, limit: int = 50, skip: int = 0
+    ) -> List[Dict]:
+        """
+        Get documents for a specific conversation.
+
+        Args:
+            conversation_id: Conversation ID
+            limit: Maximum number of documents to return
+            skip: Number of documents to skip for pagination
+
+        Returns:
+            List of document metadata objects
+        """
+        try:
+            documents = self.db["documents"]
+            cursor = (
+                documents.find({"conversation_id": conversation_id})
+                .sort("uploaded_at", -1)
+                .skip(skip)
+                .limit(limit)
+            )
+            return await cursor.to_list(length=limit)
+        except Exception as e:
+            logger.error(f"Error getting documents for conversation: {e}")
+            return []
 
     async def get_document(self, document_id: str) -> Optional[Dict]:
         """Get document by ID."""
